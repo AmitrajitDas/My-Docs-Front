@@ -5,6 +5,9 @@ import './styles.css';
 import { io } from 'socket.io-client';
 import { useParams } from 'react-router-dom';
 
+// milliseconds
+const SAVE_INTERVAL = 2000;
+
 const TOOLBAR_OPTIONS = [
     [{ header: [1, 2, 3, 4, 5, 6, false] }],
     [{ font: [] }],
@@ -33,17 +36,32 @@ const TextEditor = () => {
     }, []);
 
     //for loading document
-
     useEffect(() => {
         if (socket == null || quill == null) return;
 
+        // listen to event once - cleans up after listening
         socket.once("load-document", document => {
             quill.setContents(document);
             quill.enable();
         })
 
+        // tell server what document we are working on
         socket.emit("get-document", documentId)
     }, [socket, quill, documentId]);
+
+    // saves document
+    useEffect(() => {
+        if (socket == null || quill == null) return;
+
+        const interval = setInterval(() => {
+            socket.emit('save-document', quill.getContents());
+        }, SAVE_INTERVAL)
+
+        return () => {
+            clearInterval(interval);
+        }
+
+    }, [socket, quill])
 
     // For emitting changes
     useEffect(() => {
